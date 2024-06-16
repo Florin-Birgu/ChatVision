@@ -1,24 +1,14 @@
 package ai.augmentedproducticity.chatvision
 
+import ai.augmentedproducticity.chatvision.ui.theme.ChatVisionTheme
 import android.Manifest
-import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.Point
 import android.os.Bundle
-import android.os.Vibrator
-import android.speech.RecognizerIntent
 import android.util.Log
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.result.launch
-import androidx.activity.viewModels
-import androidx.annotation.RequiresPermission
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.ImageAnalysis
-import androidx.camera.core.ImageCapture
-import androidx.camera.core.ImageCaptureException
-import androidx.camera.core.ImageProxy
-import androidx.camera.core.Preview as CameraPreview
+import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.layout.Box
@@ -29,23 +19,18 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
-import ai.augmentedproducticity.chatvision.ui.theme.ChatVisionTheme
-import android.graphics.Bitmap
-import android.graphics.Point
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.PermissionStatus
+import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
-import java.util.Locale
 
 @Composable
 fun AppContent() {
@@ -54,9 +39,11 @@ fun AppContent() {
         val viewModel = MainViewModel()
 
         Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-            Box(modifier = Modifier
-                .padding(innerPadding)
-                .fillMaxSize()) {
+            Box(
+                modifier = Modifier
+                    .padding(innerPadding)
+                    .fillMaxSize()
+            ) {
                 CameraPreviewView(viewModel)
                 // Handle Permissions
                 CameraPermissionRequest {
@@ -70,7 +57,9 @@ fun AppContent() {
 @Composable
 fun CameraPreviewView(viewModel: MainViewModel) {
     AndroidView(factory = { context ->
-        val previewView = PreviewView(context)
+        val previewView = PreviewView(context).apply {
+            this.scaleType = PreviewView.ScaleType.FILL_CENTER
+        }
         viewModel.previewView = previewView
         previewView
     })
@@ -85,27 +74,24 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-
-
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun CameraPermissionRequest(onGranted: () -> Unit) {
     val cameraPermissionState = rememberPermissionState(permission = Manifest.permission.CAMERA)
     val context = LocalContext.current
 
-    LaunchedEffect(Unit) {
-        if (cameraPermissionState.status == PermissionStatus.Granted) {
+    LaunchedEffect(cameraPermissionState.status.isGranted) {
+        if (cameraPermissionState.status.isGranted) {
             onGranted()
         } else {
             cameraPermissionState.launchPermissionRequest()
         }
     }
 
-    if (cameraPermissionState.status != PermissionStatus.Granted) {
+    if (!cameraPermissionState.status.isGranted) {
         Text(text = "Camera permission is required for this app to function.")
     }
 }
-
 
 class MainViewModel : ViewModel() {
     private val client = OkHttpClient()
@@ -120,9 +106,8 @@ class MainViewModel : ViewModel() {
     }
 
     private fun bindCameraUseCases(context: ComponentActivity, cameraProvider: ProcessCameraProvider) {
-        val preview = CameraPreview.Builder().build().also {
-            it.setSurfaceProvider(previewView?.surfaceProvider)
-        }
+        val preview = Preview.Builder().build()
+        preview.setSurfaceProvider(previewView?.surfaceProvider)
 
         val imageCapture = ImageCapture.Builder().build()
         val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
@@ -155,7 +140,7 @@ class MainViewModel : ViewModel() {
     private fun processImage(image: ImageProxy) {
         viewModelScope.launch {
             val bitmap = image.toBitmap() // Convert image to bitmap
-            val detectedPoint = detectObject(bitmap)
+//            val detectedPoint = detectObject(bitmap)
             // TODO: Track object and provide feedback via vibration
         }
     }
@@ -191,6 +176,7 @@ fun ImageProxy.toBitmap(): Bitmap {
 
 fun Bitmap.toBase64(): String {
     // TODO: Convert Bitmap to Base64 string
+
     // Placeholder code
     return ""
 }
