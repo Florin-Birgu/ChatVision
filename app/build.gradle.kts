@@ -69,6 +69,8 @@ dependencies {
 //    implementation("androidx.camera:camera-extensions:1.3.4")
 
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
+    implementation("com.aallam.openai:openai-client:3.7.2")
     implementation("com.google.accompanist:accompanist-permissions:0.34.0")
 
     testImplementation(libs.junit)
