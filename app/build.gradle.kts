@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
@@ -17,6 +19,22 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
+        }
+
+        buildFeatures {
+            buildConfig = true
+        }
+//            buildConfigField("String", "CHATGPT_API_KEY", "\"test123\"")
+
+        // Load API key from local.properties
+        val localProperties = Properties()
+        val localPropertiesFile = rootProject.file("local.properties")
+        if (localPropertiesFile.exists()) {
+            localPropertiesFile.inputStream().use { localProperties.load(it) }
+        }
+        val chatGptApiKey = localProperties["CHATGPT_API_KEY"] as String?
+        if (chatGptApiKey != null) {
+            buildConfigField("String", "CHATGPT_API_KEY", "\"$chatGptApiKey\"")
         }
     }
 
@@ -69,6 +87,11 @@ dependencies {
 //    implementation("androidx.camera:camera-extensions:1.3.4")
 
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
+    implementation("io.ktor:ktor-client-cio:2.3.11")
+    implementation("io.ktor:ktor-client-okhttp:2.3.11")
+    implementation("io.ktor:ktor-client-serialization:2.3.11")
+    implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.11")
 
     implementation("com.aallam.openai:openai-client:3.7.2")
     implementation("com.google.accompanist:accompanist-permissions:0.34.0")
