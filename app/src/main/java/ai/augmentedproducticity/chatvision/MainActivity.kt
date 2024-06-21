@@ -12,14 +12,17 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.camera.core.*
 import androidx.camera.view.PreviewView
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
@@ -31,14 +34,29 @@ fun AppContent() {
     ChatVisionTheme {
         val context = LocalContext.current
         val viewModel = MainViewModel()
+        var textInput by remember { mutableStateOf("where is the cat") }
 
         Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
             Box(
                 modifier = Modifier
                     .padding(innerPadding)
-                    .fillMaxSize()
+                    .fillMaxSize(),
+                contentAlignment = Alignment.Center
             ) {
-                CameraPreviewView(viewModel)
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CameraPreviewView(viewModel)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    OutlinedTextField(
+                        value = textInput,
+                        onValueChange = { textInput = it },
+                        label = { Text("Enter your question") },
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(onClick = { viewModel.captureImage(textInput) }) {
+                        Text("Take Picture")
+                    }
+                }
                 // Handle Permissions
                 CameraPermissionRequest {
                     viewModel.initializeCamera(context as ComponentActivity)
@@ -78,15 +96,14 @@ class MainActivity : ComponentActivity() {
         setContent {
             AppContent()
         }
-        startSpeechRecognition()
     }
 
     private fun startSpeechRecognition() {
-//        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-//            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-//            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-US")
-//        }
-//        speechRecognizerLauncher.launch(intent)
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-US")
+        }
+        speechRecognizerLauncher.launch(intent)
     }
 }
 
@@ -108,16 +125,3 @@ fun CameraPermissionRequest(onGranted: () -> Unit) {
         Text(text = "Camera permission is required for this app to function.")
     }
 }
-
-//// Extension functions to convert ImageProxy to Bitmap and Bitmap to Base64
-//fun ImageProxy.toBitmap(): Bitmap {
-//    // TODO: Convert ImageProxy to Bitmap
-//    // Placeholder code
-//    return Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-//}
-//
-//fun Bitmap.toBase64(): String {
-//    // TODO: Convert Bitmap to Base64 string
-//    // Placeholder code
-//    return ""
-//}
