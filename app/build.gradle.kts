@@ -102,6 +102,9 @@ dependencies {
 
     implementation("com.aallam.openai:openai-client:3.7.2")
     implementation("com.google.accompanist:accompanist-permissions:0.34.0")
+    implementation(project(":openCV"))
+
+//    implementation("org.opencv:opencv-android:4.10.0")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

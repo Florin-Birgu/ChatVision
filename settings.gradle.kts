@@ -21,4 +21,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Chat Vision"
 include(":app")
- 
+include(":openCV")

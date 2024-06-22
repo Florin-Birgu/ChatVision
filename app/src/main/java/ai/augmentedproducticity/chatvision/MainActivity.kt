@@ -6,6 +6,7 @@ import android.graphics.Bitmap
 import android.content.Intent
 import android.os.Bundle
 import android.speech.RecognizerIntent
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -28,6 +29,7 @@ import androidx.core.content.ContextCompat
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
+import org.opencv.android.OpenCVLoader
 
 @Composable
 fun AppContent() {
@@ -93,6 +95,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (!OpenCVLoader.initLocal()) {
+            // Handle initialization error
+            Log.e("OpenCV", "OpenCV initialization failed)
+        }
         setContent {
             AppContent()
         }
