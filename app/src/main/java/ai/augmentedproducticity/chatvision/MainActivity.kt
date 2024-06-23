@@ -4,6 +4,7 @@ import ai.augmentedproducticity.chatvision.ui.theme.ChatVisionTheme
 import android.Manifest
 import android.graphics.Bitmap
 import android.content.Intent
+import android.graphics.Point
 import android.os.Bundle
 import android.speech.RecognizerIntent
 import android.util.Log
@@ -41,13 +42,16 @@ fun AppContent() {
         Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
             Box(
                 modifier = Modifier
-                    .padding(innerPadding)
-                    .fillMaxSize(),
+                    .padding(innerPadding),
+//                    .fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    CameraPreviewView(viewModel)
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Box(contentAlignment = Alignment.Center) {
+                        CameraPreviewView(viewModel)
+                        CameraOverlayView(context)
+                    }
+//                    Spacer(modifier = Modifier.height(16.dp))
                     OutlinedTextField(
                         value = textInput,
                         onValueChange = { textInput = it },
@@ -55,7 +59,9 @@ fun AppContent() {
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
                     )
                     Spacer(modifier = Modifier.height(16.dp))
-                    Button(onClick = { viewModel.captureImage(textInput) }) {
+                    Button(onClick = {
+                        viewModel.captureImage(textInput)
+                    }) {
                         Text("Take Picture")
                     }
                 }
@@ -97,7 +103,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         if (!OpenCVLoader.initLocal()) {
             // Handle initialization error
-            Log.e("OpenCV", "OpenCV initialization failed)
+            Log.e("OpenCV", "OpenCV initialization failed")
         }
         setContent {
             AppContent()
