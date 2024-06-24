@@ -23,23 +23,30 @@ class CameraOverlayView @JvmOverloads constructor(
     fun setPreviewSize(width: Int, height: Int) {
         previewWidth = width
         previewHeight = height
-    }
-
-    fun setPoint(point: Point?) {
-        this.point = point?.let { adjustPointToViewSize(it) }
         invalidate()
     }
 
-    private fun adjustPointToViewSize(point: Point): Point {
-        val scaleX = width.toFloat() / previewWidth
-        val scaleY = height.toFloat() / previewHeight
-        return Point((point.x * scaleX).toInt(), (point.y * scaleY).toInt())
+    fun setPoint(point: Point?) {
+        this.point = point
+        invalidate()
     }
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         point?.let {
-            canvas.drawCircle(it.x.toFloat(), it.y.toFloat(), 10f, paint)
+            val adjustedPoint = adjustPointToViewSize(it)
+            canvas.drawCircle(adjustedPoint.x.toFloat(), adjustedPoint.y.toFloat(), 20f, paint)
         }
+    }
+
+    private fun adjustPointToViewSize(point: Point): Point {
+        val scaleX = width.toFloat() / previewWidth
+        val scaleY = height.toFloat() / previewHeight
+        val scale = minOf(scaleX, scaleY)
+
+        val newX = (point.x * scale + (width - previewWidth * scale) / 2f).toInt()
+        val newY = (point.y * scale + (height - previewHeight * scale) / 2f).toInt()
+
+        return Point(newX, newY)
     }
 }

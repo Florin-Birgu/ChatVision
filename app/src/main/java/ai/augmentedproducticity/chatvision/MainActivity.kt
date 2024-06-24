@@ -44,12 +44,11 @@ fun AppContent() {
         Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
             Box(
                 modifier = Modifier
-                    .padding(innerPadding),
-                contentAlignment = Alignment.Center
+                    .padding(innerPadding)
+                    .fillMaxSize()
             ) {
-
                 Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Box(modifier = Modifier.weight(1f)) {
+                    Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                         CameraPreviewView(viewModel)
                         CameraOverlayComposable(viewModel)
                     }
@@ -58,7 +57,7 @@ fun AppContent() {
                             value = textInput,
                             onValueChange = { textInput = it },
                             label = { Text("Enter your question") },
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+                            modifier = Modifier.fillMaxWidth()
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Button(onClick = {
@@ -85,23 +84,24 @@ fun CameraPreviewView(viewModel: MainViewModel) {
         }
         viewModel.previewView = previewView
         previewView
-    })
+    }, modifier = Modifier.fillMaxSize())
 }
 
 @Composable
 fun CameraOverlayComposable(viewModel: MainViewModel) {
-    val point = viewModel?.detectedPoint
+    val point = viewModel.detectedPoint
 
     AndroidView(
         factory = { context ->
-            CameraOverlayView(context).apply {
-                // Set initial preview size, you might want to update this when the preview size changes
-                setPreviewSize(1280, 720)
-            }
+            CameraOverlayView(context)
         },
         update = { view ->
+            viewModel.previewView?.let {
+                view.setPreviewSize(it.width, it.height)
+            }
             view.setPoint(point)
-        }
+        },
+        modifier = Modifier.fillMaxSize()
     )
 }
 
