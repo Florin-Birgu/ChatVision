@@ -27,42 +27,45 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
+import kotlinx.coroutines.launch
 import org.opencv.android.OpenCVLoader
 
 @Composable
 fun AppContent() {
     ChatVisionTheme {
         val context = LocalContext.current
-        val viewModel = MainViewModel()
+        val viewModel = remember { MainViewModel() }
         var textInput by remember { mutableStateOf("where is the cat") }
 
         Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
             Box(
                 modifier = Modifier
                     .padding(innerPadding),
-//                    .fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Box(contentAlignment = Alignment.Center) {
+
+                Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(modifier = Modifier.weight(1f)) {
                         CameraPreviewView(viewModel)
-                        CameraOverlayView(context)
+                        CameraOverlayComposable(viewModel)
                     }
-//                    Spacer(modifier = Modifier.height(16.dp))
-                    OutlinedTextField(
-                        value = textInput,
-                        onValueChange = { textInput = it },
-                        label = { Text("Enter your question") },
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Button(onClick = {
-                        viewModel.captureImage(textInput)
-                    }) {
-                        Text("Take Picture")
+                    Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        OutlinedTextField(
+                            value = textInput,
+                            onValueChange = { textInput = it },
+                            label = { Text("Enter your question") },
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(onClick = {
+                            viewModel.captureImage(textInput)
+                        }) {
+                            Text("Take Picture")
+                        }
                     }
                 }
                 // Handle Permissions
@@ -83,6 +86,23 @@ fun CameraPreviewView(viewModel: MainViewModel) {
         viewModel.previewView = previewView
         previewView
     })
+}
+
+@Composable
+fun CameraOverlayComposable(viewModel: MainViewModel) {
+    val point = viewModel?.detectedPoint
+
+    AndroidView(
+        factory = { context ->
+            CameraOverlayView(context).apply {
+                // Set initial preview size, you might want to update this when the preview size changes
+                setPreviewSize(1280, 720)
+            }
+        },
+        update = { view ->
+            view.setPoint(point)
+        }
+    )
 }
 
 class MainActivity : ComponentActivity() {
@@ -107,6 +127,9 @@ class MainActivity : ComponentActivity() {
         }
         setContent {
             AppContent()
+        }
+        lifecycleScope.launch {
+
         }
     }
 

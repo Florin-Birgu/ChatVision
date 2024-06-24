@@ -13,20 +13,33 @@ class CameraOverlayView @JvmOverloads constructor(
 ) : View(context, attrs, defStyleAttr) {
 
     private var point: Point? = null
+    private var previewWidth: Int = 0
+    private var previewHeight: Int = 0
     private val paint = Paint().apply {
         color = ContextCompat.getColor(context, android.R.color.holo_red_light)
         style = Paint.Style.FILL
     }
 
+    fun setPreviewSize(width: Int, height: Int) {
+        previewWidth = width
+        previewHeight = height
+    }
+
     fun setPoint(point: Point?) {
-        this.point = point
-        invalidate() // Redraw the view
+        this.point = point?.let { adjustPointToViewSize(it) }
+        invalidate()
+    }
+
+    private fun adjustPointToViewSize(point: Point): Point {
+        val scaleX = width.toFloat() / previewWidth
+        val scaleY = height.toFloat() / previewHeight
+        return Point((point.x * scaleX).toInt(), (point.y * scaleY).toInt())
     }
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         point?.let {
-            canvas?.drawCircle(it.x.toFloat(), it.y.toFloat(), 10f, paint)
+            canvas.drawCircle(it.x.toFloat(), it.y.toFloat(), 10f, paint)
         }
     }
 }
