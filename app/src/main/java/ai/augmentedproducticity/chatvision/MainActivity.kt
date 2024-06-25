@@ -8,6 +8,7 @@ import android.graphics.Point
 import android.os.Bundle
 import android.speech.RecognizerIntent
 import android.util.Log
+import android.widget.ImageView
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -50,7 +51,6 @@ fun AppContent() {
                 Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
                     Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                         CameraPreviewView(viewModel)
-                        CameraOverlayComposable(viewModel)
                     }
                     Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                         OutlinedTextField(
@@ -78,28 +78,18 @@ fun AppContent() {
 
 @Composable
 fun CameraPreviewView(viewModel: MainViewModel) {
-    AndroidView(factory = { context ->
-        val previewView = PreviewView(context).apply {
-            this.scaleType = PreviewView.ScaleType.FILL_CENTER
-        }
-        viewModel.previewView = previewView
-        previewView
-    }, modifier = Modifier.fillMaxSize())
-}
-
-@Composable
-fun CameraOverlayComposable(viewModel: MainViewModel) {
-    val point = viewModel.detectedPoint
+    val currentFrame by viewModel.currentFrame.collectAsState()
 
     AndroidView(
         factory = { context ->
-            CameraOverlayView(context)
-        },
-        update = { view ->
-            viewModel.previewView?.let {
-                view.setPreviewSize(it.width, it.height)
+            ImageView(context).apply {
+                scaleType = ImageView.ScaleType.FIT_CENTER
             }
-            view.setPoint(point)
+        },
+        update = { imageView ->
+            currentFrame?.let {
+                imageView.setImageBitmap(it)
+            }
         },
         modifier = Modifier.fillMaxSize()
     )
