@@ -2,14 +2,23 @@ package ai.augmentedproducticity.chatvision
 
 import ai.augmentedproducticity.chatvision.ui.theme.ChatVisionTheme
 import android.Manifest
+import android.content.Context
 import android.graphics.Bitmap
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Point
+import android.os.Build
 import android.os.Bundle
+import android.os.CombinedVibration
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import android.speech.RecognizerIntent
 import android.util.Log
 import android.widget.ImageView
+import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
@@ -28,6 +37,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.core.content.ContextCompat.getSystemService
 import androidx.lifecycle.lifecycleScope
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
@@ -39,8 +49,38 @@ import org.opencv.android.OpenCVLoader
 fun AppContent() {
     ChatVisionTheme {
         val context = LocalContext.current
-        val viewModel = remember { MainViewModel() }
+        val viewModel = remember { MainViewModel(context) }
         var textInput by remember { mutableStateOf("where is the cat") }
+
+        var hasVibratePermission by remember {
+            mutableStateOf(
+                ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.VIBRATE
+                ) == PackageManager.PERMISSION_GRANTED
+            )
+        }
+
+        val permissionLauncher = rememberLauncherForActivityResult(
+            ActivityResultContracts.RequestPermission()
+        ) { isGranted: Boolean ->
+            hasVibratePermission = isGranted
+        }
+
+        LaunchedEffect(Unit) {
+            if (!hasVibratePermission) {
+                permissionLauncher.launch(Manifest.permission.VIBRATE)
+            }
+        }
+
+        val vibrator = remember {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
+            } else {
+                context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+            }
+        }
+        val hasVibrator = remember { vibrator.hasVibrator() }
 
         Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
             Box(
@@ -61,6 +101,21 @@ fun AppContent() {
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Button(onClick = {
+
+//                            if (hasVibrator) {
+//                                if (hasVibratePermission) {
+//                                    viewModel.vibrate(50)
+//                                } else {
+//                                    // Show a toast or some other UI indication
+//                                    Toast.makeText(context, "Vibration permission not granted", Toast.LENGTH_SHORT).show()
+//                                    // Optionally, request permission again
+//                                    permissionLauncher.launch(Manifest.permission.VIBRATE)
+//                                }
+//                                viewModel.vibrate(1000)
+//                            } else {
+//                                // Show a toast or some other UI indication
+//                                Toast.makeText(context, "Vibration not available on this device", Toast.LENGTH_SHORT).show()
+//                            }
                             viewModel.captureImage(textInput)
                         }) {
                             Text("Take Picture")
