@@ -116,7 +116,8 @@ fun AppContent() {
 //                                // Show a toast or some other UI indication
 //                                Toast.makeText(context, "Vibration not available on this device", Toast.LENGTH_SHORT).show()
 //                            }
-                            viewModel.captureImage(textInput)
+                            viewModel.beep(1000) // 1 second beep
+//                            viewModel.captureImage(textInput)
                         }) {
                             Text("Take Picture")
                         }
@@ -151,7 +152,6 @@ fun CameraPreviewView(viewModel: MainViewModel) {
 }
 
 class MainActivity : ComponentActivity() {
-
     private val viewModel: MainViewModel by viewModels()
 
     private val speechRecognizerLauncher =
