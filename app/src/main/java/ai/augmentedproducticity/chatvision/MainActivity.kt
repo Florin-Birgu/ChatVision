@@ -24,6 +24,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.camera.core.*
 import androidx.camera.view.PreviewView
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedTextField
@@ -32,6 +33,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -117,7 +122,7 @@ fun AppContent() {
 //                                Toast.makeText(context, "Vibration not available on this device", Toast.LENGTH_SHORT).show()
 //                            }
                             viewModel.beep(1000) // 1 second beep
-//                            viewModel.captureImage(textInput)
+                            viewModel.captureImage(textInput)
                         }) {
                             Text("Take Picture")
                         }
@@ -135,20 +140,34 @@ fun AppContent() {
 @Composable
 fun CameraPreviewView(viewModel: MainViewModel) {
     val currentFrame by viewModel.currentFrame.collectAsState()
+    val detectedRect by viewModel.detectedRect.collectAsState()
 
-    AndroidView(
-        factory = { context ->
-            ImageView(context).apply {
-                scaleType = ImageView.ScaleType.FIT_CENTER
-            }
-        },
-        update = { imageView ->
-            currentFrame?.let {
-                imageView.setImageBitmap(it)
-            }
-        },
-        modifier = Modifier.fillMaxSize()
-    )
+    Box(modifier = Modifier.fillMaxSize()) {
+        AndroidView(
+            factory = { context ->
+                ImageView(context).apply {
+                    scaleType = ImageView.ScaleType.FIT_CENTER
+                }
+            },
+            update = { imageView ->
+                currentFrame?.let {
+                    imageView.setImageBitmap(it)
+                }
+            },
+            modifier = Modifier.fillMaxSize()
+        )
+
+//        detectedRect?.let { rect ->
+//            Canvas(modifier = Modifier.fillMaxSize()) {
+//                drawRect(
+//                    color = Color.Red,
+//                    topLeft = Offset(rect.left.toFloat(), rect.top.toFloat()),
+//                    size = Size(rect.width().toFloat(), rect.height().toFloat()),
+//                    style = Stroke(width = 4f)
+//                )
+//            }
+//        }
+    }
 }
 
 class MainActivity : ComponentActivity() {
