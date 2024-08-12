@@ -13,7 +13,9 @@ import android.os.CombinedVibration
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
+import android.speech.SpeechRecognizer
 import android.util.Log
 import android.widget.ImageView
 import android.widget.Toast
@@ -56,36 +58,7 @@ fun AppContent() {
         val context = LocalContext.current
         val viewModel = remember { MainViewModel(context) }
         var textInput by remember { mutableStateOf("where is the cat") }
-
-        var hasVibratePermission by remember {
-            mutableStateOf(
-                ContextCompat.checkSelfPermission(
-                    context,
-                    Manifest.permission.VIBRATE
-                ) == PackageManager.PERMISSION_GRANTED
-            )
-        }
-
-        val permissionLauncher = rememberLauncherForActivityResult(
-            ActivityResultContracts.RequestPermission()
-        ) { isGranted: Boolean ->
-            hasVibratePermission = isGranted
-        }
-
-        LaunchedEffect(Unit) {
-            if (!hasVibratePermission) {
-                permissionLauncher.launch(Manifest.permission.VIBRATE)
-            }
-        }
-
-        val vibrator = remember {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
-            } else {
-                context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-            }
-        }
-        val hasVibrator = remember { vibrator.hasVibrator() }
+        val recognizedText by viewModel.recognizedText.collectAsState()
 
         Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
             Box(
@@ -104,25 +77,14 @@ fun AppContent() {
                             label = { Text("Enter your question") },
                             modifier = Modifier.fillMaxWidth()
                         )
+                        Text(
+                            text = "Recognized Speech: $recognizedText",
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+                        )
                         Spacer(modifier = Modifier.height(16.dp))
                         Button(onClick = {
-
-//                            if (hasVibrator) {
-//                                if (hasVibratePermission) {
-//                                    viewModel.vibrate(50)
-//                                } else {
-//                                    // Show a toast or some other UI indication
-//                                    Toast.makeText(context, "Vibration permission not granted", Toast.LENGTH_SHORT).show()
-//                                    // Optionally, request permission again
-//                                    permissionLauncher.launch(Manifest.permission.VIBRATE)
-//                                }
-//                                viewModel.vibrate(1000)
-//                            } else {
-//                                // Show a toast or some other UI indication
-//                                Toast.makeText(context, "Vibration not available on this device", Toast.LENGTH_SHORT).show()
-//                            }
-                            viewModel.beep() // 1 second beep
-                            viewModel.captureImage(textInput)
+                            viewModel.beep()
+                            viewModel.captureImage(recognizedText)
                         }) {
                             Text("Take Picture")
                         }
@@ -172,6 +134,8 @@ fun CameraPreviewView(viewModel: MainViewModel) {
 
 class MainActivity : ComponentActivity() {
     private val viewModel: MainViewModel by viewModels()
+    private lateinit var speechRecognizer: SpeechRecognizer
+    private var isListening = false
 
     private val speechRecognizerLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -192,9 +156,74 @@ class MainActivity : ComponentActivity() {
         setContent {
             AppContent()
         }
-        lifecycleScope.launch {
 
+        initializeSpeechRecognizer()
+        startContinuousListening()
+
+        lifecycleScope.launch {
+            // Your existing code here
         }
+    }
+
+    private fun initializeSpeechRecognizer() {
+        speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this)
+        speechRecognizer.setRecognitionListener(object : RecognitionListener {
+            override fun onResults(results: Bundle?) {
+                val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                matches?.get(0)?.let { spokenText ->
+                    when {
+                        spokenText.toLowerCase().startsWith("where is") -> {
+                            viewModel.onSpeechRecognized(spokenText)
+                            viewModel.captureImage(spokenText)
+                        }
+                        spokenText.toLowerCase() == "cancel search" -> {
+                            // Handle canceling the search
+                            viewModel.onSpeechRecognized("Search canceled")
+                            // Add any additional logic for canceling the search
+                        }
+                    }
+                }
+                startContinuousListening()
+            }
+
+            override fun onReadyForSpeech(params: Bundle?) {}
+            override fun onBeginningOfSpeech() {}
+            override fun onRmsChanged(rmsdB: Float) {}
+            override fun onBufferReceived(buffer: ByteArray?) {}
+            override fun onEndOfSpeech() {}
+            override fun onError(error: Int) {
+                Log.e("SpeechRecognizer", "Error: $error")
+                when (error) {
+                    SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> {
+                        Toast.makeText(this@MainActivity, "Microphone permission is required", Toast.LENGTH_SHORT).show()
+                    }
+                    else -> {
+                        startContinuousListening()
+                    }
+                }
+            }
+            override fun onPartialResults(partialResults: Bundle?) {}
+            override fun onEvent(eventType: Int, params: Bundle?) {}
+        })
+    }
+
+    private fun startContinuousListening() {
+        if (!isListening) {
+            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-US")
+                putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, packageName)
+                putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+                putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+            }
+            speechRecognizer.startListening(intent)
+            isListening = true
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        speechRecognizer.destroy()
     }
 
     private fun startSpeechRecognition() {
