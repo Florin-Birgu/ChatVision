@@ -121,7 +121,7 @@ fun AppContent() {
 //                                // Show a toast or some other UI indication
 //                                Toast.makeText(context, "Vibration not available on this device", Toast.LENGTH_SHORT).show()
 //                            }
-                            viewModel.beep(1000) // 1 second beep
+                            viewModel.beep() // 1 second beep
                             viewModel.captureImage(textInput)
                         }) {
                             Text("Take Picture")
