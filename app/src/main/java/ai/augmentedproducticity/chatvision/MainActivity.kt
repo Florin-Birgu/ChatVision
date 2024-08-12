@@ -45,6 +45,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.core.content.ContextCompat.getSystemService
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
@@ -53,10 +55,9 @@ import kotlinx.coroutines.launch
 import org.opencv.android.OpenCVLoader
 
 @Composable
-fun AppContent() {
+fun AppContent(viewModel: MainViewModel) {
     ChatVisionTheme {
         val context = LocalContext.current
-        val viewModel = remember { MainViewModel(context) }
         var textInput by remember { mutableStateOf("where is the cat") }
         val recognizedText by viewModel.recognizedText.collectAsState()
 
@@ -133,35 +134,91 @@ fun CameraPreviewView(viewModel: MainViewModel) {
 }
 
 class MainActivity : ComponentActivity() {
-    private val viewModel: MainViewModel by viewModels()
+    private lateinit var viewModel: MainViewModel
     private lateinit var speechRecognizer: SpeechRecognizer
     private var isListening = false
 
-    private val speechRecognizerLauncher =
-        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            if (result.resultCode == RESULT_OK) {
-                val spokenText: String? = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.get(0)
-                spokenText?.let {
-                    viewModel.onSpeechRecognized(it)
-                }
+
+    class MainViewModelFactory(private val context: Context) : ViewModelProvider.Factory {
+        override fun <T : ViewModel> create(modelClass: Class<T>): T {
+            if (modelClass.isAssignableFrom(MainViewModel::class.java)) {
+                @Suppress("UNCHECKED_CAST")
+                return MainViewModel(context) as T
+            }
+            throw IllegalArgumentException("Unknown ViewModel class")
+        }
+    }
+
+
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            initializeSpeechRecognizer()
+            startContinuousListening()
+        } else {
+            Toast.makeText(this, "Speech recognition permission denied", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+
+    private fun handleSpeechResult(spokenText: String) {
+        when {
+            spokenText.toLowerCase().startsWith("where is") -> {
+                viewModel.captureImage(spokenText)
+            }
+            spokenText.toLowerCase() == "cancel search" -> {
+                // Handle canceling the search
+                // Add any additional logic for canceling the search
             }
         }
+    }
+
+
+
+//    private val speechRecognizerLauncher =
+//        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+//            if (result.resultCode == RESULT_OK) {
+//                val spokenText: String? = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.get(0)
+//                spokenText?.let {
+//                    viewModel.onSpeechRecognized(it)
+//                }
+//            }
+//        }
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        viewModel = ViewModelProvider(this, MainViewModelFactory(applicationContext))
+            .get(MainViewModel::class.java)
+
         if (!OpenCVLoader.initLocal()) {
-            // Handle initialization error
             Log.e("OpenCV", "OpenCV initialization failed")
         }
         setContent {
-            AppContent()
+            AppContent(viewModel)
         }
 
-        initializeSpeechRecognizer()
-        startContinuousListening()
+        checkAndRequestAudioPermission()
 
         lifecycleScope.launch {
             // Your existing code here
+        }
+    }
+
+    private fun checkAndRequestAudioPermission() {
+        when {
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.RECORD_AUDIO
+            ) == PackageManager.PERMISSION_GRANTED -> {
+                initializeSpeechRecognizer()
+                startContinuousListening()
+            }
+            else -> {
+                requestPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+            }
         }
     }
 
@@ -171,16 +228,8 @@ class MainActivity : ComponentActivity() {
             override fun onResults(results: Bundle?) {
                 val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                 matches?.get(0)?.let { spokenText ->
-                    when {
-                        spokenText.toLowerCase().startsWith("where is") -> {
-                            viewModel.onSpeechRecognized(spokenText)
-                            viewModel.captureImage(spokenText)
-                        }
-                        spokenText.toLowerCase() == "cancel search" -> {
-                            // Handle canceling the search
-                            viewModel.onSpeechRecognized("Search canceled")
-                            // Add any additional logic for canceling the search
-                        }
+                    runOnUiThread {
+                        handleSpeechResult(spokenText)
                     }
                 }
                 startContinuousListening()
@@ -226,13 +275,13 @@ class MainActivity : ComponentActivity() {
         speechRecognizer.destroy()
     }
 
-    private fun startSpeechRecognition() {
-        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-US")
-        }
-        speechRecognizerLauncher.launch(intent)
-    }
+//    private fun startSpeechRecognition() {
+//        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+//            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+//            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-US")
+//        }
+//        speechRecognizerLauncher.launch(intent)
+//    }
 }
 
 @OptIn(ExperimentalPermissionsApi::class)
