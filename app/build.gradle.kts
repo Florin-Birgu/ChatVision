@@ -37,8 +37,11 @@ android {
             buildConfigField("String", "CHATGPT_API_KEY", "\"$chatGptApiKey\"")
         }
         val geminiApiKey = localProperties["GEMINI_API_KEY"] as String?
-        if (chatGptApiKey != null) {
+        if (geminiApiKey != null) {
             buildConfigField("String", "GEMINI_API_KEY", "\"$geminiApiKey\"")
+        } else {
+            // Provide empty default for release builds
+            buildConfigField("String", "GEMINI_API_KEY", "\"\"")
         }
     }
 
@@ -109,6 +112,10 @@ dependencies {
     implementation("com.google.ai.client.generativeai:generativeai:0.7.0")
 
     implementation("com.google.accompanist:accompanist-permissions:0.34.0")
+
+    // Encrypted SharedPreferences for secure API key storage
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
+
     implementation(project(":openCV"))
 
 //    implementation("org.opencv:opencv-android:4.10.0")

@@ -58,42 +58,66 @@ import org.opencv.android.OpenCVLoader
 fun AppContent(viewModel: MainViewModel) {
     ChatVisionTheme {
         val context = LocalContext.current
+        val securePrefs = remember { SecurePreferences(context) }
+        var isApiKeyConfigured by remember { mutableStateOf(securePrefs.isApiKeyConfigured()) }
         var textInput by remember { mutableStateOf("where is the cat") }
         val recognizedText by viewModel.recognizedText.collectAsState()
 
-        Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-            Box(
-                modifier = Modifier
-                    .padding(innerPadding)
-                    .fillMaxSize()
-            ) {
-                Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                        CameraPreviewView(viewModel)
-                    }
-                    Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        OutlinedTextField(
-                            value = textInput,
-                            onValueChange = { textInput = it },
-                            label = { Text("Enter your question") },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        Text(
-                            text = "Recognized Speech: $recognizedText",
-                            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Button(onClick = {
-                            viewModel.beep()
-                            viewModel.captureImage(recognizedText)
-                        }) {
-                            Text("Take Picture")
+        if (!isApiKeyConfigured) {
+            // Show API key setup screen
+            val debugApiKey = if (BuildConfig.DEBUG) {
+                // In debug mode, try to prefill from BuildConfig
+                try {
+                    BuildConfig.GEMINI_API_KEY
+                } catch (e: Exception) {
+                    ""
+                }
+            } else {
+                ""
+            }
+
+            ApiKeySetupScreen(
+                initialApiKey = debugApiKey,
+                onApiKeyConfigured = { apiKey ->
+                    isApiKeyConfigured = true
+                }
+            )
+        } else {
+            // Show main app interface
+            Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                Box(
+                    modifier = Modifier
+                        .padding(innerPadding)
+                        .fillMaxSize()
+                ) {
+                    Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                            CameraPreviewView(viewModel)
+                        }
+                        Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            OutlinedTextField(
+                                value = textInput,
+                                onValueChange = { textInput = it },
+                                label = { Text("Enter your question") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Text(
+                                text = "Recognized Speech: $recognizedText",
+                                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(onClick = {
+                                viewModel.beep()
+                                viewModel.captureImage(recognizedText)
+                            }) {
+                                Text("Take Picture")
+                            }
                         }
                     }
-                }
-                // Handle Permissions
-                CameraPermissionRequest {
-                    viewModel.initializeCamera(context as ComponentActivity)
+                    // Handle Permissions
+                    CameraPermissionRequest {
+                        viewModel.initializeCamera(context as ComponentActivity)
+                    }
                 }
             }
         }

@@ -162,6 +162,14 @@ class MainViewModel(private val context: Context) : ViewModel() {
     }
     private suspend fun detectObject(bitmap: Bitmap, question: String): Rect? {
     try {
+        // Get API key from secure storage
+        val securePrefs = SecurePreferences(context)
+        val apiKey = securePrefs.getGeminiApiKey()
+
+        if (apiKey.isNullOrBlank()) {
+            Log.e("AI", "No API key configured")
+            return null
+        }
 
         val generationConfig = generationConfig{
 //            stopSequences = listOf("\n")
@@ -173,7 +181,7 @@ class MainViewModel(private val context: Context) : ViewModel() {
 
         val model = GenerativeModel(
             modelName = "gemini-1.5-flash-001",
-            apiKey = BuildConfig.GEMINI_API_KEY,
+            apiKey = apiKey,
             generationConfig = generationConfig
         )
 
