@@ -146,33 +146,53 @@ fun AppContent(viewModel: MainViewModel) {
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                if (appState is AppState.Idle || appState is AppState.TrackingLost) {
-                                    Button(
-                                        onClick = {
-                                            if (textInput.isNotEmpty()) {
-                                                viewModel.searchForObject(textInput)
-                                            }
-                                        },
-                                        modifier = Modifier.weight(1f),
-                                        enabled = textInput.isNotEmpty()
-                                    ) {
-                                        Text("Search")
+                                when {
+                                    appState is AppState.Idle || appState is AppState.TrackingLost -> {
+                                        Button(
+                                            onClick = {
+                                                if (textInput.isNotEmpty()) {
+                                                    viewModel.searchForObject(textInput)
+                                                }
+                                            },
+                                            modifier = Modifier.weight(1f),
+                                            enabled = textInput.isNotEmpty()
+                                        ) {
+                                            Text("Search")
+                                        }
                                     }
-                                } else {
-                                    Button(
-                                        onClick = { viewModel.cancelSearch() },
-                                        modifier = Modifier.weight(1f),
-                                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                                            containerColor = androidx.compose.material3.MaterialTheme.colorScheme.error
-                                        )
-                                    ) {
-                                        Text("Cancel")
+                                    appState is AppState.Tracking -> {
+                                        Button(
+                                            onClick = { viewModel.onUserFoundObject() },
+                                            modifier = Modifier.weight(1f),
+                                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                                containerColor = androidx.compose.material3.MaterialTheme.colorScheme.primary
+                                            )
+                                        ) {
+                                            Text("Done")
+                                        }
+                                        androidx.compose.material3.OutlinedButton(
+                                            onClick = { viewModel.cancelSearch() },
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            Text("Cancel")
+                                        }
+                                    }
+                                    else -> {
+                                        Button(
+                                            onClick = { viewModel.cancelSearch() },
+                                            modifier = Modifier.weight(1f),
+                                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                                containerColor = androidx.compose.material3.MaterialTheme.colorScheme.error
+                                            )
+                                        ) {
+                                            Text("Cancel")
+                                        }
                                     }
                                 }
 
                                 androidx.compose.material3.OutlinedButton(
                                     onClick = { viewModel.provideHelp() },
-                                    modifier = Modifier.weight(1f)
+                                    modifier = Modifier.weight(if (appState is AppState.Tracking) 1f else 1f)
                                 ) {
                                     Text("Help")
                                 }

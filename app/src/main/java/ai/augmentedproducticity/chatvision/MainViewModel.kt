@@ -96,6 +96,11 @@ class MainViewModel(private val context: Context) : ViewModel() {
     private var trackingLostFrames = 0
     private val maxLostFrames = 30 // ~1 second at 30fps
 
+    // Success detection
+    private var centeredFrameCount = 0
+    private val requiredCenteredFrames = 15 // ~0.5 seconds at 30fps
+    private var successAnnounced = false
+
     init {
         // Initialize Text-to-Speech
         textToSpeech = TextToSpeech(context) { status ->
@@ -227,6 +232,10 @@ class MainViewModel(private val context: Context) : ViewModel() {
                     speak("What would you like me to find?")
                 }
             }
+            lowerText.contains("done") || lowerText.contains("got it") || lowerText.contains("found it") -> {
+                // User indicates they successfully found the object
+                onUserFoundObject()
+            }
             lowerText.contains("cancel") || lowerText.contains("stop") -> {
                 cancelSearch()
             }
@@ -277,6 +286,18 @@ class MainViewModel(private val context: Context) : ViewModel() {
     }
 
     /**
+     * User indicates they successfully found the object
+     */
+    fun onUserFoundObject() {
+        if (_appState.value is AppState.Tracking) {
+            speak("Great! You found the $currentQuery. Ready for the next search.")
+            resetToIdle()
+        } else {
+            speak("No active tracking. Say 'where is' followed by an object name to search.")
+        }
+    }
+
+    /**
      * Cancel current search/tracking and return to idle
      */
     fun cancelSearch() {
@@ -296,6 +317,8 @@ class MainViewModel(private val context: Context) : ViewModel() {
             tracker?.clear()
             tracker = null
             trackingLostFrames = 0
+            centeredFrameCount = 0
+            successAnnounced = false
             currentQuery = ""
             speak("Ready. Say 'where is' followed by an object name.")
         }
@@ -313,7 +336,7 @@ class MainViewModel(private val context: Context) : ViewModel() {
                 "I'm searching for an object. Hold your phone steady and point it around the room. Say 'cancel' to stop."
             }
             is AppState.Tracking -> {
-                "Object found! Move your phone slowly. Faster beeps mean you're pointing at the object. Say 'cancel' to stop, or 'find something else' to search again."
+                "Object found! Move your phone slowly. Faster beeps mean you're pointing at the object. When you've found it, say 'done' or 'got it'. You can also say 'cancel' to stop."
             }
             is AppState.TrackingLost -> {
                 "Tracking lost. Say 'where is' to search again, or 'cancel' to stop."
@@ -559,10 +582,27 @@ class MainViewModel(private val context: Context) : ViewModel() {
         // Only beep if we're actively tracking
         if (_appState.value is AppState.Tracking) {
             _detectedRect.value?.let { rect ->
-                _beepInterval = calculateBeepInterval(rect, bitmap.width, bitmap.height)
+                val interval = calculateBeepInterval(rect, bitmap.width, bitmap.height)
+                _beepInterval = interval
+
+                // Check if object is centered (interval < 200ms means very close to center)
+                if (interval < 200) {
+                    centeredFrameCount++
+
+                    // If object has been centered for ~0.5 seconds, announce success
+                    if (centeredFrameCount >= requiredCenteredFrames && !successAnnounced) {
+                        successAnnounced = true
+                        speak("Perfect! You're pointing at the $currentQuery. Say 'done' when you're ready to find something else.", TextToSpeech.QUEUE_ADD)
+                    }
+                } else {
+                    // Object moved away from center, reset counter but keep success announced flag
+                    centeredFrameCount = 0
+                }
             }
         } else {
             _beepInterval = null // Stop beeping when not tracking
+            centeredFrameCount = 0
+            successAnnounced = false
         }
     }
 
