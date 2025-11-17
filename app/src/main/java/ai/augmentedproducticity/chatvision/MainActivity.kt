@@ -84,6 +84,8 @@ fun AppContent(viewModel: MainViewModel) {
             )
         } else {
             // Show main app interface
+            val appState by viewModel.appState.collectAsState()
+
             Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                 Box(
                     modifier = Modifier
@@ -95,22 +97,85 @@ fun AppContent(viewModel: MainViewModel) {
                             CameraPreviewView(viewModel)
                         }
                         Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            // App state indicator
+                            androidx.compose.material3.Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 8.dp),
+                                colors = androidx.compose.material3.CardDefaults.cardColors(
+                                    containerColor = when (appState) {
+                                        is AppState.Idle -> androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant
+                                        is AppState.Searching -> androidx.compose.material3.MaterialTheme.colorScheme.primaryContainer
+                                        is AppState.Tracking -> androidx.compose.material3.MaterialTheme.colorScheme.tertiaryContainer
+                                        is AppState.TrackingLost -> androidx.compose.material3.MaterialTheme.colorScheme.errorContainer
+                                        is AppState.Error -> androidx.compose.material3.MaterialTheme.colorScheme.errorContainer
+                                    }
+                                )
+                            ) {
+                                Text(
+                                    text = when (appState) {
+                                        is AppState.Idle -> "🎤 Ready - Say 'where is [object]'"
+                                        is AppState.Searching -> "🔍 Searching for ${(appState as AppState.Searching).query}..."
+                                        is AppState.Tracking -> "✅ Tracking ${(appState as AppState.Tracking).objectName} - Follow beeps!"
+                                        is AppState.TrackingLost -> "⚠️ Tracking lost - Say 'where is' to search again"
+                                        is AppState.Error -> "❌ ${(appState as AppState.Error).message}"
+                                    },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
+                                    style = androidx.compose.material3.MaterialTheme.typography.bodyMedium
+                                )
+                            }
+
                             OutlinedTextField(
                                 value = textInput,
                                 onValueChange = { textInput = it },
-                                label = { Text("Enter your question") },
-                                modifier = Modifier.fillMaxWidth()
+                                label = { Text("Or type object name") },
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = appState is AppState.Idle || appState is AppState.TrackingLost
                             )
                             Text(
-                                text = "Recognized Speech: $recognizedText",
-                                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+                                text = if (recognizedText.isNotEmpty()) "Heard: \"$recognizedText\"" else "Listening...",
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                                style = androidx.compose.material3.MaterialTheme.typography.bodySmall
                             )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Button(onClick = {
-                                viewModel.beep()
-                                viewModel.captureImage(recognizedText)
-                            }) {
-                                Text("Take Picture")
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            // Action buttons based on state
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                if (appState is AppState.Idle || appState is AppState.TrackingLost) {
+                                    Button(
+                                        onClick = {
+                                            if (textInput.isNotEmpty()) {
+                                                viewModel.searchForObject(textInput)
+                                            }
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                        enabled = textInput.isNotEmpty()
+                                    ) {
+                                        Text("Search")
+                                    }
+                                } else {
+                                    Button(
+                                        onClick = { viewModel.cancelSearch() },
+                                        modifier = Modifier.weight(1f),
+                                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                            containerColor = androidx.compose.material3.MaterialTheme.colorScheme.error
+                                        )
+                                    ) {
+                                        Text("Cancel")
+                                    }
+                                }
+
+                                androidx.compose.material3.OutlinedButton(
+                                    onClick = { viewModel.provideHelp() },
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text("Help")
+                                }
                             }
                         }
                     }
@@ -187,15 +252,8 @@ class MainActivity : ComponentActivity() {
 
 
     private fun handleSpeechResult(spokenText: String) {
-        when {
-            spokenText.toLowerCase().startsWith("where is") -> {
-                viewModel.captureImage(spokenText)
-            }
-            spokenText.toLowerCase() == "cancel search" -> {
-                // Handle canceling the search
-                // Add any additional logic for canceling the search
-            }
-        }
+        // Pass all speech to the ViewModel for unified handling
+        viewModel.onSpeechRecognized(spokenText)
     }
 
 
